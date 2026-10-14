@@ -1,214 +1,192 @@
-// ============================================================
-// ЛОГИКА САЙТА BALI
-// ============================================================
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BALI — ресторан на Елагином острове, Санкт-Петербург</title>
+  <meta name="description" content="Ресторан BALI в Санкт-Петербурге: меню, бизнес-ланч, банкеты, залы с видом на реку. Бронирование столиков онлайн.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
 
-const $ = (sel, root = document) => root.querySelector(sel);
-const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-const fmt = (n) => n.toLocaleString("ru-RU") + " ₽";
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
-  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+<header class="site-header">
+  <div class="container nav-wrap">
+    <a href="#top" class="logo">BALI</a>
+    <button class="nav-toggle" aria-label="Открыть меню" aria-expanded="false">☰</button>
+    <nav class="nav">
+      <a href="#menu">Меню</a>
+      <a href="#lunch">Бизнес-ланч</a>
+      <a href="#halls">Залы</a>
+      <a href="#banquet">Банкеты</a>
+      <a href="#booking">Бронь</a>
+      <a href="#contacts">Контакты</a>
+    </nav>
+  </div>
+</header>
 
-// ---------- Контакты и шапка ----------
-function renderContacts() {
-  $("#c-address").textContent = RESTAURANT.address;
-  $("#c-booking").textContent = RESTAURANT.phones.booking;
-  $("#c-booking").href = "tel:" + RESTAURANT.phones.booking.replace(/[^\d+]/g, "");
-  $("#c-banquet").innerHTML = RESTAURANT.phones.banquet
-    .map((p) => `<a href="tel:${p.replace(/[^\d+]/g, "")}">${p}</a>`).join("<br>");
-  $("#c-email").textContent = RESTAURANT.email;
-  $("#c-email").href = "mailto:" + RESTAURANT.email;
-  $("#c-hours").innerHTML = Object.entries(RESTAURANT.hours)
-    .map(([d, t]) => `${d}: ${t}`).join("<br>");
-  const socialNames = { telegram: "Telegram", whatsapp: "WhatsApp", vk: "VK", max: "MAX", youtube: "YouTube" };
-  $("#c-socials").innerHTML = Object.entries(RESTAURANT.socials)
-    .map(([k, url]) => `<a class="social" href="${url}" target="_blank" rel="noopener">${socialNames[k]}</a>`).join("");
-  $("#year").textContent = new Date().getFullYear();
-}
+<main id="top">
 
-function setupNav() {
-  const toggle = $(".nav-toggle");
-  const nav = $(".nav");
-  toggle.addEventListener("click", () => {
-    const open = nav.classList.toggle("open");
-    toggle.setAttribute("aria-expanded", open);
-  });
-  $$(".nav a").forEach((a) => a.addEventListener("click", () => {
-    nav.classList.remove("open");
-    toggle.setAttribute("aria-expanded", "false");
-  }));
-}
-
-// ---------- Меню ----------
-let activeCat = "all";
-let activeTags = new Set();
-
-function renderMenuTabs() {
-  const tabs = [{ id: "all", title: "Всё" }, ...MENU_CATEGORIES];
-  $("#menu-tabs").innerHTML = tabs.map((t) =>
-    `<button class="tab ${t.id === activeCat ? "active" : ""}" data-cat="${t.id}">${t.title}</button>`
-  ).join("");
-  $$("#menu-tabs .tab").forEach((b) => b.addEventListener("click", () => {
-    activeCat = b.dataset.cat;
-    renderMenuTabs();
-    renderMenu();
-  }));
-}
-
-function renderMenuFilters() {
-  $("#menu-filters").innerHTML = Object.entries(TAG_LABELS).map(([k, label]) =>
-    `<button class="chip ${activeTags.has(k) ? "active" : ""}" data-tag="${k}">${label}</button>`
-  ).join("");
-  $$("#menu-filters .chip").forEach((b) => b.addEventListener("click", () => {
-    const t = b.dataset.tag;
-    activeTags.has(t) ? activeTags.delete(t) : activeTags.add(t);
-    renderMenuFilters();
-    renderMenu();
-  }));
-}
-
-function renderMenu() {
-  const q = $("#menu-search").value.trim().toLowerCase();
-  const items = MENU_ITEMS.filter((it) => {
-    if (activeCat !== "all" && it.cat !== activeCat) return false;
-    if (activeTags.size && ![...activeTags].every((t) => it.tags.includes(t))) return false;
-    if (q && !(it.name + " " + it.desc).toLowerCase().includes(q)) return false;
-    return true;
-  });
-
-  $("#menu-empty").classList.toggle("hidden", items.length > 0);
-  $("#menu-list").innerHTML = items.map((it) => {
-    const cat = MENU_CATEGORIES.find((c) => c.id === it.cat);
-    const tags = it.tags.map((t) => `<span class="tag tag-${t}">${TAG_LABELS[t]}</span>`).join("");
-    return `
-      <article class="card menu-card">
-        <div class="card-top">
-          <h3>${esc(it.name)}</h3>
-          <span class="price">${fmt(it.price)}</span>
-        </div>
-        <p class="muted">${esc(it.desc)}</p>
-        <div class="card-bottom">
-          <small class="muted">${esc(cat ? cat.title : "")} · ${esc(it.weight)}</small>
-          <div>${tags}</div>
-        </div>
-      </article>`;
-  }).join("");
-}
-
-function setupMenu() {
-  renderMenuTabs();
-  renderMenuFilters();
-  renderMenu();
-  $("#menu-search").addEventListener("input", renderMenu);
-}
-
-// ---------- Бизнес-ланч ----------
-function renderLunch() {
-  $("#lunch-hours").textContent = BUSINESS_LUNCH.hours;
-  $("#lunch-includes").innerHTML = BUSINESS_LUNCH.includes.map((i) => `<li>${esc(i)}</li>`).join("");
-  $("#lunch-price").textContent = fmt(BUSINESS_LUNCH.price);
-}
-
-// ---------- Залы ----------
-function renderHalls(activeId = HALLS[0].id) {
-  $("#hall-tabs").innerHTML = HALLS.map((h) =>
-    `<button class="tab ${h.id === activeId ? "active" : ""}" data-hall="${h.id}">${esc(h.name)}</button>`
-  ).join("");
-  const h = HALLS.find((x) => x.id === activeId);
-  $("#hall-detail").innerHTML = `
-    <div class="hall-card">
-      <div class="hall-info">
-        <h3>${esc(h.name)}</h3>
-        <p>${esc(h.description)}</p>
-        <ul class="check-list">${h.features.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>
+  <!-- ГЛАВНЫЙ ЭКРАН -->
+  <section class="hero">
+    <div class="container hero-inner">
+      <h1>BALI</h1>
+      <p class="hero-sub">Ресторан с видом на реку и Елагин остров</p>
+      <div class="hero-cta">
+        <a href="#booking" class="btn btn-primary">Забронировать стол</a>
+        <a href="#banquet" class="btn btn-outline">Банкет и мероприятия</a>
       </div>
-      <div class="hall-stats">
-        <div><span class="big">до ${h.capacity}</span><small>гостей</small></div>
-        <div><span class="big">${fmt(h.minCheck)}</span><small>средний чек на гостя (ориентир)</small></div>
+    </div>
+  </section>
+
+  <!-- МЕНЮ -->
+  <section id="menu" class="section">
+    <div class="container">
+      <h2>Меню</h2>
+      <p class="muted">Выберите категорию или найдите блюдо по названию. Цены — тестовые, для демонстрации.</p>
+
+      <div class="menu-controls">
+        <input type="search" id="menu-search" placeholder="Поиск блюда…" aria-label="Поиск блюда">
+        <div class="filters" id="menu-filters"></div>
+        <div class="tabs" id="menu-tabs"></div>
       </div>
-    </div>`;
-  $$("#hall-tabs .tab").forEach((b) => b.addEventListener("click", () => renderHalls(b.dataset.hall)));
-}
 
-function setupHallSelect() {
-  const sel = $("#booking-hall");
-  HALLS.forEach((h) => sel.insertAdjacentHTML("beforeend", `<option value="${h.id}">${esc(h.name)}</option>`));
-}
+      <div id="menu-list" class="menu-grid"></div>
+      <p id="menu-empty" class="muted hidden">Ничего не найдено. Попробуйте другой запрос.</p>
+    </div>
+  </section>
 
-// ---------- Калькулятор банкета ----------
-function setupCalc() {
-  $("#calc-format").innerHTML = BANQUET_FORMATS.map((f) =>
-    `<option value="${f.id}">${esc(f.name)}</option>`).join("");
-  $("#calc-extras").innerHTML = EXTRA_SERVICES.map((s) =>
-    `<label class="checkbox"><input type="checkbox" value="${s.id}"> ${esc(s.name)} — ${fmt(s.price)}</label>`).join("");
+  <!-- БИЗНЕС-ЛАНЧ -->
+  <section id="lunch" class="section alt">
+    <div class="container lunch-box">
+      <div>
+        <h2>Бизнес-ланч</h2>
+        <p id="lunch-hours" class="muted"></p>
+        <ul id="lunch-includes" class="check-list"></ul>
+      </div>
+      <div class="price-badge">
+        <span id="lunch-price"></span>
+        <small>за комплект</small>
+      </div>
+    </div>
+  </section>
 
-  const update = () => {
-    const guests = +$("#calc-guests").value;
-    $("#calc-guests-val").textContent = guests;
-    const format = BANQUET_FORMATS.find((f) => f.id === $("#calc-format").value);
-    const food = guests * format.pricePerGuest;
-    const extras = $$("#calc-extras input:checked").map((i) => EXTRA_SERVICES.find((s) => s.id === i.value));
-    const extrasSum = extras.reduce((s, e) => s + (e.id === "cake" ? 0 : e.price), 0);
-    const total = food + extrasSum;
-    $("#calc-total").textContent = fmt(total);
-    $("#calc-breakdown").innerHTML = [
-      `<li>${esc(format.name)}: ${guests} гост. × ${fmt(format.pricePerGuest)} = ${fmt(food)}</li>`,
-      ...extras.map((e) => `<li>${esc(e.name)}: ${fmt(e.price)}</li>`),
-      `<li class="note">Торт рассчитывается отдельно по весу.</li>`
-    ].join("");
-  };
+  <!-- ЗАЛЫ -->
+  <section id="halls" class="section">
+    <div class="container">
+      <h2>Залы</h2>
+      <p class="muted">Выберите зал, чтобы увидеть вместимость и возможности.</p>
+      <div class="tabs" id="hall-tabs"></div>
+      <div id="hall-detail" class="hall-detail"></div>
+    </div>
+  </section>
 
-  ["#calc-format", "#calc-guests"].forEach((s) => $(s).addEventListener("input", update));
-  $$("#calc-extras input").forEach((i) => i.addEventListener("change", update));
-  update();
-}
+  <!-- КАЛЬКУЛЯТОР БАНКЕТА -->
+  <section id="banquet" class="section alt">
+    <div class="container">
+      <h2>Банкеты: расчёт стоимости</h2>
+      <p class="muted">Предварительный расчёт. Точная смета — после согласования с менеджером.</p>
 
-// ---------- Форма бронирования ----------
-function setupForm() {
-  const form = $("#booking-form");
-  const status = $("#booking-status");
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const data = Object.fromEntries(new FormData(form).entries());
-    const phoneOk = /^\+?[\d\s()-]{10,}$/.test(data.phone || "");
-    if (!form.checkValidity() || !phoneOk) {
-      status.className = "status error";
-      status.textContent = "Заполните обязательные поля, телефон укажите полностью.";
-      return;
-    }
-    if (!RESTAURANT.formEndpoint) {
-      // Демо-режим: заявка не отправляется
-      status.className = "status ok";
-      status.textContent = `Демо: заявка на ${data.date} в ${data.time} принята (не отправлена, нужен endpoint).`;
-      form.reset();
-      return;
-    }
-    status.className = "status";
-    status.textContent = "Отправка…";
-    try {
-      const res = await fetch(RESTAURANT.formEndpoint, {
-        method: "POST",
-        headers: { "Accept": "application/json" },
-        body: new FormData(form)
-      });
-      if (!res.ok) throw new Error();
-      status.className = "status ok";
-      status.textContent = "Спасибо! Мы свяжемся с вами для подтверждения.";
-      form.reset();
-    } catch {
-      status.className = "status error";
-      status.textContent = `Не удалось отправить. Позвоните: ${RESTAURANT.phones.booking}`;
-    }
-  });
-}
+      <div class="calc">
+        <div class="calc-form">
+          <label>Повод
+            <select id="calc-format"></select>
+          </label>
+          <label>Количество гостей
+            <input type="range" id="calc-guests" min="10" max="150" value="40">
+            <span id="calc-guests-val">40</span>
+          </label>
+          <fieldset>
+            <legend>Дополнительно</legend>
+            <div id="calc-extras"></div>
+          </fieldset>
+        </div>
+        <div class="calc-result">
+          <p>Ориентировочная сумма</p>
+          <div class="total" id="calc-total">0 ₽</div>
+          <ul id="calc-breakdown" class="muted small"></ul>
+          <a href="#booking" class="btn btn-primary full">Оставить заявку</a>
+        </div>
+      </div>
+    </div>
+  </section>
 
-// ---------- Старт ----------
-document.addEventListener("DOMContentLoaded", () => {
-  renderContacts();
-  setupNav();
-  setupMenu();
-  renderLunch();
-  renderHalls();
-  setupHallSelect();
-  setupCalc();
-  setupForm();
-});
+  <!-- БРОНИРОВАНИЕ -->
+  <section id="booking" class="section">
+    <div class="container narrow">
+      <h2>Бронирование стола</h2>
+      <p class="muted">Или позвоните: <a href="tel:+78123315669">+7 812 331-56-69</a></p>
+
+      <form id="booking-form" class="form" novalidate>
+        <div class="grid-2">
+          <label>Имя*
+            <input name="name" required autocomplete="name">
+          </label>
+          <label>Телефон*
+            <input name="phone" type="tel" required placeholder="+7 900 000-00-00" autocomplete="tel">
+          </label>
+          <label>Дата*
+            <input name="date" type="date" required>
+          </label>
+          <label>Время*
+            <select name="time" required>
+              <option value="">Выберите</option>
+              <option>12:00</option><option>13:00</option><option>14:00</option><option>15:00</option>
+              <option>16:00</option><option>17:00</option><option>18:00</option><option>19:00</option>
+              <option>20:00</option><option>21:00</option><option>22:00</option>
+            </select>
+          </label>
+          <label>Гостей*
+            <input name="guests" type="number" min="1" max="20" value="2" required>
+          </label>
+          <label>Зал
+            <select name="hall" id="booking-hall">
+              <option value="any">Любой</option>
+            </select>
+          </label>
+        </div>
+        <label>Комментарий
+          <textarea name="comment" rows="3" placeholder="Аллергии, пожелания, повод"></textarea>
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" name="consent" required>
+          Согласен на обработку персональных данных
+        </label>
+        <button type="submit" class="btn btn-primary">Отправить заявку</button>
+        <p id="booking-status" class="status" role="status"></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- КОНТАКТЫ -->
+  <section id="contacts" class="section alt">
+    <div class="container contacts-grid">
+      <div>
+        <h2>Контакты</h2>
+        <p><strong>Адрес:</strong><br><span id="c-address"></span></p>
+        <p><strong>Бронь столиков:</strong><br><a id="c-booking" href="#"></a></p>
+        <p><strong>Заказ банкета:</strong><br><span id="c-banquet"></span></p>
+        <p><strong>Email:</strong><br><a id="c-email" href="#"></a></p>
+        <p><strong>Часы работы:</strong><br><span id="c-hours"></span></p>
+        <div class="socials" id="c-socials"></div>
+      </div>
+      <div class="map-wrap">
+        <iframe
+          title="Карта ресторана BALI"
+          src="https://www.openstreetmap.org/export/embed.html?bbox=30.2%2C59.96%2C30.3%2C60.0&layer=mapnik"
+          loading="lazy"></iframe>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <p>© <span id="year"></span> BALI. Все права защищены.</p>
+  </div>
+</footer>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
